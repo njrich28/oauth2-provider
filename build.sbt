@@ -1,14 +1,18 @@
-name := "scala-oauth2-provider-example"
+name := "oauth2-provider"
 
-version := "1.0-SNAPSHOT"
+version := "0.1-SNAPSHOT"
+
+lazy val root = (project in file(".")).enablePlugins(PlayScala)
+
+scalaVersion := "2.11.5"
 
 libraryDependencies ++= Seq(
   jdbc,
   anorm,
   cache,
-  "postgresql" % "postgresql" % "9.1-901.jdbc4",
-  "com.typesafe.play" %% "play-slick" % "0.6.0.1",
-  "com.nulab-inc" %% "play2-oauth2-provider" % "0.3.0"
-)     
+  "com.nulab-inc" %% "play2-oauth2-provider" % "0.12.1",
+  "com.typesafe.play" %% "play-slick" % "0.8.1",
+  "mysql" % "mysql-connector-java" % "5.1.32"
+)
 
-play.Project.playScalaSettings
+

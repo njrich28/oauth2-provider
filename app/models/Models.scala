@@ -30,7 +30,7 @@ class ClientGrantTypes(tag: Tag) extends Table[ClientGrantType](tag, "client_gra
   val pk = primaryKey("pk_client_grant_type", (clientId, grantTypeId))
 }
 
-case class AccessToken(accessToken: String, refreshToken: Option[String], userId: Long, scope: Option[String], expiresIn: Int, createdAt: java.sql.Timestamp, clientId: String)
+case class AccessToken(accessToken: String, refreshToken: Option[String], userId: Long, scope: Option[String], expiresIn: Int, createdAt: java.sql.Timestamp, clientId: Option[String])
 class AccessTokens(tag: Tag) extends Table[AccessToken](tag, "access_token") {
   def accessToken = column[String]("access_token", O.PrimaryKey)
   def refreshToken = column[Option[String]]("refresh_token")
@@ -38,18 +38,18 @@ class AccessTokens(tag: Tag) extends Table[AccessToken](tag, "access_token") {
   def scope = column[Option[String]]("scope")
   def expiresIn = column[Int]("expires_in")
   def createdAt = column[java.sql.Timestamp]("created_at")
-  def clientId = column[String]("client_id")
+  def clientId = column[Option[String]]("client_id")
   def * = (accessToken, refreshToken, userId, scope, expiresIn, createdAt, clientId) <> (AccessToken.tupled, AccessToken.unapply _)
 }
 
-case class AuthCode(authorizationCode: String, userId: Long, redirectUri: Option[String], createdAt: java.sql.Timestamp, scope: Option[String], clientId: String, expiresIn: Int)
+case class AuthCode(authorizationCode: String, userId: Long, redirectUri: Option[String], createdAt: java.sql.Timestamp, scope: Option[String], clientId: Option[String], expiresIn: Int)
 class AuthCodes(tag: Tag) extends Table[AuthCode](tag, "auth_code") {
   def authorizationCode = column[String]("authorization_code", O.PrimaryKey)
   def userId = column[Long]("user_id")
   def redirectUri = column[Option[String]]("redirect_uri")
   def createdAt = column[java.sql.Timestamp]("created_at")
   def scope = column[Option[String]]("scope")
-  def clientId = column[String]("client_id")
+  def clientId = column[Option[String]]("client_id")
   def expiresIn = column[Int]("expires_in")
   def * = (authorizationCode, userId, redirectUri, createdAt, scope, clientId, expiresIn) <> (AuthCode.tupled, AuthCode.unapply _)
 }
@@ -74,7 +74,7 @@ private[models] trait DAO {
 
 
 object Clients extends DAO {
-  def validate(id: String, secret: String, grantType: String): Boolean = {
+  def validate(id: String, secret: Option[String], grantType: String): Boolean = {
     DB.withTransaction { implicit session =>
       val check = for {
         ((c, cgt), gt) <- Clients innerJoin ClientGrantTypes on (_.id === _.clientId) innerJoin GrantTypes on (_._2.grantTypeId === _.id)
@@ -94,13 +94,13 @@ object Clients extends DAO {
 object Users extends DAO {
   def findUser(username: String, password: String): Option[User] = {
     DB.withTransaction { implicit session =>
-      Users.where(u => u.username === username && u.password === password).firstOption
+      Users.filter(u => u.username === username && u.password === password).firstOption
     }
   }
 
   def getById(id: Long): Option[User] = {
     DB.withTransaction { implicit session =>
-      Users.where(u => u.id === id).firstOption
+      Users.filter(u => u.id === id).firstOption
     }
   }
 }
@@ -112,29 +112,29 @@ object AccessTokens extends DAO {
     }
   }
 
-  def deleteExistingAndCreate(accessToken: AccessToken, userId: Long, clientId: String) = {
+  def deleteExistingAndCreate(accessToken: AccessToken, userId: Long, clientId: Option[String]) = {
     DB.withTransaction { implicit session =>
       // these two operations should happen inside a transaction
-      AccessTokens.where(a => a.clientId === clientId && a.userId === userId).delete
+      AccessTokens.filter(a => a.clientId === clientId && a.userId === userId).delete
       AccessTokens.insert(accessToken)
     }
   }
 
-  def findToken(userId: Long, clientId: String): Option[AccessToken] = {
+  def findToken(userId: Long, clientId: Option[String]): Option[AccessToken] = {
     DB.withTransaction { implicit session =>
-      AccessTokens.where(a => a.clientId === clientId && a.userId === userId).firstOption
+      AccessTokens.filter(a => a.clientId === clientId && a.userId === userId).firstOption
     }
   }
 
   def findAccessToken(token: String): Option[AccessToken] = {
     DB.withTransaction { implicit session =>
-      AccessTokens.where(a => a.accessToken === token).firstOption
+      AccessTokens.filter(a => a.accessToken === token).firstOption
     }
   }
 
   def findRefreshToken(token: String): Option[AccessToken] = {
     DB.withTransaction { implicit session =>
-      AccessTokens.where(a => a.refreshToken === token).firstOption
+      AccessTokens.filter(a => a.refreshToken === token).firstOption
     }
   }
 }
@@ -143,7 +143,7 @@ object AccessTokens extends DAO {
 object AuthCodes extends DAO {
   def find(code: String) = {
     DB.withTransaction { implicit session =>
-      val authCode = AuthCodes.where(a => a.authorizationCode === code).firstOption
+      val authCode = AuthCodes.filter(a => a.authorizationCode === code).firstOption
 
       // filtering out expired authorization codes
       authCode.filter(p => p.createdAt.getTime + (p.expiresIn * 1000) > new Date().getTime)
