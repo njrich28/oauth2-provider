@@ -112,6 +112,104 @@ INSERT INTO client_grant_type (3, 'test_client_id')
 
 ```
 
+Schema creation for MySQL
+```
+CREATE TABLE `user`
+(
+  id bigint(20) NOT NULL AUTO_INCREMENT,
+  username varchar(100),
+  email varchar(100),
+  password varchar(100),
+  PRIMARY KEY (id),
+  UNIQUE key `email` (`email`),
+  UNIQUE key `username` (`username`)
+) engine=InnoDB;
+
+
+CREATE TABLE `client`
+(
+  id varchar(80) NOT NULL,
+  secret varchar(80),
+  redirect_uri varchar(2000),
+  scope varchar(2000),
+  PRIMARY KEY (id)
+) engine=InnoDB;
+
+CREATE TABLE `auth_code`
+(
+  authorization_code varchar(40) NOT NULL,
+  user_id bigint(20) NOT NULL,
+  redirect_uri varchar(2000),
+  created_at timestamp NOT NULL,
+  scope varchar(1000),
+  client_id varchar(80),
+  expires_in bigint(20) NOT NULL,
+  PRIMARY KEY (authorization_code),
+  CONSTRAINT fk_auth_code_client_id FOREIGN KEY (client_id)
+      REFERENCES client (id) 
+      ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT fk_auth_code_user_id_user_id FOREIGN KEY (user_id)
+      REFERENCES `user` (id) 
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+) engine=InnoDB;
+
+CREATE TABLE `access_token`
+(
+  access_token varchar(60) NOT NULL,
+  refresh_token varchar(60),
+  user_id bigint(20) NOT NULL,
+  client_id varchar(80),
+  scope varchar(2000),
+  expires_in bigint(20) NOT NULL,
+  created_at timestamp NOT NULL,
+  PRIMARY KEY (access_token),
+  CONSTRAINT fk_access_token_client_id FOREIGN KEY (client_id)
+      REFERENCES client (id)
+      ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT fk_access_token_user_id FOREIGN KEY (user_id)
+      REFERENCES `user` (id)
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+) engine=InnoDB;
+
+CREATE TABLE grant_type
+(
+  id bigint(20) NOT NULL AUTO_INCREMENT,
+  grant_type varchar(50) NOT NULL,
+  PRIMARY KEY (id)
+) engine=InnoDB;
+
+CREATE TABLE `client_grant_type`
+(
+  grant_type_id bigint(20) NOT NULL,
+  client_id varchar(80) NOT NULL,
+  PRIMARY KEY (grant_type_id, client_id),
+  CONSTRAINT fk_client_grant_type_client_id FOREIGN KEY (client_id)
+      REFERENCES client (id)
+      ON UPDATE NO ACTION ON DELETE NO ACTION,
+  CONSTRAINT fk_client_grant_type_grant_type_id FOREIGN KEY (grant_type_id)
+      REFERENCES grant_type (id)
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+) engine=InnoDB;
+
+-- insert grant_types in grant_type configuration table
+INSERT INTO grant_type (id, grant_type) VALUES (1, 'authorization_code');
+INSERT INTO grant_type (id, grant_type) VALUES (2, 'client_credentials');
+INSERT INTO grant_type (id, grant_type) VALUES (3, 'password');
+INSERT INTO grant_type (id, grant_type) VALUES (4, 'refresh_token');
+
+-- create sample user
+INSERT INTO `user` (username, email, password) VALUES ('test_user', 'test_email', 'test_password');
+
+-- create sample client
+INSERT INTO `client` (id, secret, redirect_uri, scope) VALUES ('test_client_id', 'test_client_secret', 'http://xxx', 'read write update');
+
+-- associate some grant_types to client
+INSERT INTO client_grant_type (grant_type_id, client_id) values (1, 'test_client_id');
+INSERT INTO client_grant_type (grant_type_id, client_id) values (2, 'test_client_id');
+INSERT INTO client_grant_type (grant_type_id, client_id) values (3, 'test_client_id');
+
+```
+
 # Run
 
  - Create the tables using above queries
